@@ -3,9 +3,14 @@ dotenv.config();
 
 export async function processScreenshot(mainWindow, imageDataOrArray) {
   const API_KEY = process.env.GEMINI_API_KEY;
+  const language = process.env.language;
   const prompt = `You are a concise coding assistant for stealth interview help.
-Look at the screenshots and directly give the clean solution or answer without unnecessary explanations.
-If code is needed, provide only the essential working code in markdown code blocks.`;
+  first give your thoughts on the problem.
+Look at the screenshots and directly give the clean solution in ${language}.
+If code is needed, provide only the essential working code in markdown code blocks.
+Give solution with comments explaing the code.
+after giving the solution give complexity of the code. (both time and space)
+`;
 
   const contents = imageDataOrArray.map(img => ({
     inline_data: { mime_type: "image/png", data: img }
