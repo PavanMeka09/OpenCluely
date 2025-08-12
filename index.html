@@ -2,7 +2,9 @@
 <html>
 <head>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script type="module" src="src/renderer.js"></script>
 </head>
 <body class="font-[Inter] h-screen w-screen select-none overflow-hidden bg-transparent flex flex-col items-center justify-start">
     <div class="w-full max-w-2xl flex flex-col gap-2 p-2 mx-auto mt-2">
@@ -22,102 +24,25 @@
                     <span class="p-1 bg-zinc-800 rounded border border-white/20">ctrl</span>
                     <span class="p-1 bg-zinc-800 rounded border border-white/20">g</span>
                 </div>
-                <span id="screenshot-count" class="ml-2 text-xs text-gray-300"></span>
             </div>
         </div>
 
         <!-- Loading Indicator -->
-        <div id="loading" class="hidden text-white text-sm animate-pulse">⏳ Processing...</div>
+        <div id="loading" class="hidden text-white text-sm animate-pulse">⏳ Generating...</div>
 
         <!-- Screenshot Preview -->
-        <div id="screenshot-stack-preview" class="hidden flex flex-row gap-4 w-full justify-start items-center min-h-[60px]">
+        <div id="screenshot-stack-preview" class="hidden flex flex-row gap-4 w-full justify-start items-center min-h-[60px] transition-all duration-300 ease-in-out">
             <!-- Thumbnails inserted here -->
         </div>
 
         <!-- AI Response -->
         <div id="ai-response" 
-            class="w-full p-3 rounded-xl bg-white/10 border border-white/20 text-white text-sm hidden"
+            class="w-full p-3 rounded-xl bg-black/30 border border-white/20 text-white text-sm hidden transition-all duration-300 ease-in-out custom-scroll"
             style="max-height: calc(100vh - 200px); overflow: hidden; -webkit-app-region: no-drag;">
         </div>
 
     </div>
 
-    <script>
-        const { ipcRenderer } = require('electron');
-
-        function updateScreenshotStack(stack) {
-            const preview = document.getElementById('screenshot-stack-preview');
-            const count = document.getElementById('screenshot-count');
-            preview.innerHTML = '';
-            count.textContent = stack.length ? `(${stack.length}/5)` : '';
-            preview.classList.toggle('hidden', stack.length === 0);
-            stack.forEach((img, idx) => {
-                const thumb = document.createElement('img');
-                thumb.src = 'data:image/png;base64,' + img;
-                thumb.className = 'w-20 h-16 object-contain rounded-lg border border-white/20 shadow';
-                thumb.alt = `Screenshot ${idx+1}`;
-                preview.appendChild(thumb);
-            });
-        }
-
-        function formatAIText(text) {
-            const escaped = text
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;");
-            return escaped.replace(/```([\s\S]*?)```/g, '<pre class="bg-black/50 p-2 rounded text-xs overflow-x-auto"><code>$1</code></pre>');
-        }
-
-        function showAIResponse(text, isError = false) {
-            const resp = document.getElementById('ai-response');
-            resp.innerHTML = text;
-            resp.classList.remove('hidden');
-            resp.classList.toggle('bg-red-500/20', isError);
-            resp.classList.toggle('border-red-500/40', isError);
-            resp.classList.toggle('bg-white/10', !isError);
-            resp.classList.toggle('border-white/20', !isError);
-        }
-
-        ipcRenderer.on('screenshot-stack', (event, stack) => {
-            updateScreenshotStack(stack);
-        });
-
-        ipcRenderer.on('show-loading', () => {
-            document.getElementById('loading').classList.remove('hidden');
-        });
-
-        ipcRenderer.on('api-response', (event, text) => {
-            document.getElementById('loading').classList.add('hidden');
-            showAIResponse(formatAIText(text), false);
-        });
-
-        ipcRenderer.on('api-error', (event, text) => {
-            document.getElementById('loading').classList.add('hidden');
-            showAIResponse(text, true);
-        });
-
-        ipcRenderer.on('clear-ai-response', () => {
-            document.getElementById('ai-response').textContent = '';
-            document.getElementById('ai-response').classList.add('hidden');
-        });
-
-        updateScreenshotStack([]);
-    </script>
 </body>
-<style>
-    /* Dark rounded scrollbar to match UI */
-.custom-scroll::-webkit-scrollbar {
-    width: 6px;
-}
-.custom-scroll::-webkit-scrollbar-track {
-    background: transparent;
-}
-.custom-scroll::-webkit-scrollbar-thumb {
-    background-color: rgba(255, 255, 255, 0.2);
-    border-radius: 3px;
-}
-.custom-scroll::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(255, 255, 255, 0.4);
-}
 
-</style>
 </html>
