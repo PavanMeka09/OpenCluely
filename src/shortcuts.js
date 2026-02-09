@@ -1,6 +1,6 @@
 import { globalShortcut, app, screen } from 'electron';
 import screenshot from 'screenshot-desktop';
-import { processScreenshot } from './api.js';
+import { processScreenshot, resolveAIProvider } from './api.js';
 import { CONFIG } from './config.js';
 import { createWindowMotionController } from './window-motion.js';
 import dotenv from 'dotenv';
@@ -15,12 +15,14 @@ export function registerShortcuts(mainWindow, screenshotStack, maxScreenshots = 
 
   globalShortcut.unregisterAll();
   let currentMode = CONFIG.DEFAULT_PROMPT_MODE;
+  let currentProvider = resolveAIProvider(process.env.AI_PROVIDER);
 
   const defaultShortcuts = {
     toggle_visibility: 'Ctrl+B',
     take_screenshot: 'Ctrl+H',
     process_screenshots: 'Ctrl+Enter',
     toggle_mode: 'Ctrl+M',
+    toggle_provider: 'Ctrl+P',
     reset_context: 'Ctrl+G',
     quit: 'Ctrl+Q',
     move_left: 'Ctrl+Left',
@@ -72,15 +74,18 @@ export function registerShortcuts(mainWindow, screenshotStack, maxScreenshots = 
     }
   };
 
-  const sendModeToRenderer = () => {
+  const sendStatusToRenderer = () => {
     sendToRenderer('mode-changed', currentMode);
-    sendToRenderer('debug-status', `Mode: ${currentMode}`);
+    sendToRenderer('debug-status', `Mode: ${currentMode} | Provider: ${currentProvider}`);
   };
 
   const processWithMode = async (images, options = {}) => {
-    const apiKey = process.env.GEMINI_API_KEY;
     const language = process.env.language || CONFIG.DEFAULT_LANGUAGE;
-    return processScreenshot(images, apiKey, language, { mode: currentMode, ...options });
+    return processScreenshot(images, undefined, language, {
+      mode: currentMode,
+      provider: currentProvider,
+      ...options
+    });
   };
 
   // Toggle overlay visibility
@@ -126,6 +131,7 @@ export function registerShortcuts(mainWindow, screenshotStack, maxScreenshots = 
     }
     isProcessing = true;
     sendToRenderer('show-loading');
+    sendToRenderer('debug-status', `Processing ${screenshotStack.length} screenshot(s) via ${currentProvider}`);
 
     try {
       const imagesToProcess = [...screenshotStack];
@@ -143,6 +149,7 @@ export function registerShortcuts(mainWindow, screenshotStack, maxScreenshots = 
       // Properly extract error message
       const errorMessage = err.message || 'Failed to process screenshots';
       if (mainWindow && !mainWindow.isDestroyed()) {
+        sendToRenderer('debug-status', `Error from ${currentProvider}`);
         sendToRenderer('api-error', errorMessage);
       }
     } finally {
@@ -154,7 +161,14 @@ export function registerShortcuts(mainWindow, screenshotStack, maxScreenshots = 
     const modes = CONFIG.PROMPT_MODES;
     const currentIdx = modes.indexOf(currentMode);
     currentMode = modes[(currentIdx + 1) % modes.length];
-    sendModeToRenderer();
+    sendStatusToRenderer();
+  });
+
+  registerShortcut('toggle_provider', shortcuts.toggle_provider, () => {
+    const providers = CONFIG.AI_PROVIDERS;
+    const currentIdx = providers.indexOf(currentProvider);
+    currentProvider = providers[(currentIdx + 1) % providers.length];
+    sendStatusToRenderer();
   });
 
   // Scroll AI response up
@@ -203,5 +217,5 @@ export function registerShortcuts(mainWindow, screenshotStack, maxScreenshots = 
     }
   }
 
-  sendModeToRenderer();
+  sendStatusToRenderer();
 }
