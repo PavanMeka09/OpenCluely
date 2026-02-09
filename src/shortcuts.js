@@ -1,11 +1,17 @@
-import { globalShortcut, app } from 'electron';
+import { globalShortcut, app, screen } from 'electron';
 import screenshot from 'screenshot-desktop';
 import { processScreenshot } from './api.js';
 import { CONFIG } from './config.js';
+import { createWindowMotionController } from './window-motion.js';
 import dotenv from 'dotenv';
 dotenv.config();
 
 export function registerShortcuts(mainWindow, screenshotStack, maxScreenshots = CONFIG.MAX_SCREENSHOTS) {
+  const motionController = createWindowMotionController({
+    mainWindow,
+    electronScreen: screen,
+    config: CONFIG
+  });
 
   globalShortcut.unregisterAll();
   let currentMode = CONFIG.DEFAULT_PROMPT_MODE;
@@ -181,16 +187,12 @@ export function registerShortcuts(mainWindow, screenshotStack, maxScreenshots = 
 
   // Move overlay left
   registerShortcut('move_left', shortcuts.move_left, () => {
-    if (!mainWindow || mainWindow.isDestroyed()) return;
-    const [x, y] = mainWindow.getPosition();
-    mainWindow.setBounds({ x: x - 100, y, width: CONFIG.WINDOW_WIDTH, height: CONFIG.WINDOW_HEIGHT });
+    motionController.moveBy(-CONFIG.WINDOW_MOVE_STEP);
   });
 
   // Move overlay right
   registerShortcut('move_right', shortcuts.move_right, () => {
-    if (!mainWindow || mainWindow.isDestroyed()) return;
-    const [x, y] = mainWindow.getPosition();
-    mainWindow.setBounds({ x: x + 100, y, width: CONFIG.WINDOW_WIDTH, height: CONFIG.WINDOW_HEIGHT });
+    motionController.moveBy(CONFIG.WINDOW_MOVE_STEP);
   });
 
   if (failedShortcuts.length > 0) {
