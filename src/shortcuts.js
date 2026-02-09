@@ -8,11 +8,13 @@ dotenv.config();
 export function registerShortcuts(mainWindow, screenshotStack, maxScreenshots = CONFIG.MAX_SCREENSHOTS) {
 
   globalShortcut.unregisterAll();
+  let currentMode = CONFIG.DEFAULT_PROMPT_MODE;
 
   const defaultShortcuts = {
     toggle_visibility: 'Ctrl+B',
     take_screenshot: 'Ctrl+H',
     process_screenshots: 'Ctrl+Enter',
+    toggle_mode: 'Ctrl+M',
     reset_context: 'Ctrl+G',
     quit: 'Ctrl+Q',
     move_left: 'Ctrl+Left',
@@ -30,6 +32,7 @@ export function registerShortcuts(mainWindow, screenshotStack, maxScreenshots = 
 
   const shortcuts = { ...defaultShortcuts, ...customShortcuts };
   const failedShortcuts = [];
+  let isProcessing = false;
 
   const sendToRenderer = (channel, payload) => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -61,6 +64,17 @@ export function registerShortcuts(mainWindow, screenshotStack, maxScreenshots = 
     } else {
       console.log(`[shortcut] registered: ${name} (${accelerator})`);
     }
+  };
+
+  const sendModeToRenderer = () => {
+    sendToRenderer('mode-changed', currentMode);
+    sendToRenderer('debug-status', `Mode: ${currentMode}`);
+  };
+
+  const processWithMode = async (images, options = {}) => {
+    const apiKey = process.env.GEMINI_API_KEY;
+    const language = process.env.language || CONFIG.DEFAULT_LANGUAGE;
+    return processScreenshot(images, apiKey, language, { mode: currentMode, ...options });
   };
 
   // Toggle overlay visibility
@@ -99,17 +113,17 @@ export function registerShortcuts(mainWindow, screenshotStack, maxScreenshots = 
 
   // Process screenshots
   registerShortcut('process_screenshots', shortcuts.process_screenshots, async () => {
+    if (isProcessing) return;
     if (screenshotStack.length === 0) {
       sendToRenderer('api-error', 'No screenshots to process.');
       return;
     }
+    isProcessing = true;
     sendToRenderer('show-loading');
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    const language = process.env.language || CONFIG.DEFAULT_LANGUAGE;
-
     try {
-      const result = await processScreenshot(screenshotStack, apiKey, language);
+      const imagesToProcess = [...screenshotStack];
+      const result = await processWithMode(imagesToProcess);
 
       // Update UI with response
       if (mainWindow && !mainWindow.isDestroyed()) {
@@ -125,7 +139,16 @@ export function registerShortcuts(mainWindow, screenshotStack, maxScreenshots = 
       if (mainWindow && !mainWindow.isDestroyed()) {
         sendToRenderer('api-error', errorMessage);
       }
+    } finally {
+      isProcessing = false;
     }
+  });
+
+  registerShortcut('toggle_mode', shortcuts.toggle_mode, () => {
+    const modes = CONFIG.PROMPT_MODES;
+    const currentIdx = modes.indexOf(currentMode);
+    currentMode = modes[(currentIdx + 1) % modes.length];
+    sendModeToRenderer();
   });
 
   // Scroll AI response up
@@ -177,4 +200,6 @@ export function registerShortcuts(mainWindow, screenshotStack, maxScreenshots = 
       sendToRenderer('shortcut-registration-warning', warning);
     }
   }
+
+  sendModeToRenderer();
 }

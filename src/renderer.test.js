@@ -38,6 +38,8 @@ function makeElement(initialClasses = []) {
   return {
     textContent: '',
     innerHTML: '',
+    value: '',
+    disabled: false,
     classList: new ClassListMock(initialClasses),
     listeners: {},
     addEventListener(type, listener) {
@@ -57,7 +59,8 @@ function makeHarness() {
     'screenshot-stack-preview': makeElement(['hidden', 'opacity-0']),
     'screenshot-empty': makeElement(),
     'screenshot-count': makeElement(),
-    'ai-response': makeElement(['hidden'])
+    'ai-response': makeElement(['hidden']),
+    'mode-indicator': makeElement()
   };
 
   const doc = {
@@ -92,6 +95,7 @@ test('renderer initializes with empty screenshot helper and count', () => {
   const { elements } = makeHarness();
 
   assert.equal(elements['screenshot-count'].textContent, '0/5');
+  assert.equal(elements['mode-indicator'].textContent, 'Mode: code');
   assert.equal(elements['screenshot-empty'].classList.contains('hidden'), false);
   assert.equal(elements['screenshot-stack-preview'].classList.contains('hidden'), true);
 });
@@ -147,6 +151,12 @@ test('renderer escapes raw html in ai response', () => {
 
   const html = elements['ai-response'].innerHTML;
   assert.match(html, /&lt;script&gt;alert\(&quot;xss&quot;\)&lt;\/script&gt;/);
+});
+
+test('renderer updates mode indicator', () => {
+  const { elements, handlers } = makeHarness();
+  handlers['mode-changed']('mcq');
+  assert.equal(elements['mode-indicator'].textContent, 'Mode: mcq');
 });
 
 test('renderer clears ai response after transition timeout', () => {

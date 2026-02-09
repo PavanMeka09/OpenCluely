@@ -83,6 +83,11 @@ function formatAIResponse(rawText) {
     return html.replace(/@@CODEBLOCK_(\d+)@@/g, (_token, idx) => codeBlocks[Number(idx)] || '');
 }
 
+function normalizeModeLabel(mode) {
+    const normalized = String(mode ?? '').trim().toLowerCase();
+    return normalized === 'mcq' ? 'mcq' : 'code';
+}
+
 export function createRendererController({
     doc,
     electronAPI,
@@ -101,6 +106,12 @@ export function createRendererController({
         const loading = getEl('loading');
         if (!loading) return;
         loading.classList.toggle('hidden', !visible);
+    };
+
+    const setModeIndicator = (mode) => {
+        const modeIndicator = getEl('mode-indicator');
+        if (!modeIndicator) return;
+        modeIndicator.textContent = `Mode: ${normalizeModeLabel(mode)}`;
     };
 
     const updateScreenshotStack = (stack) => {
@@ -129,8 +140,10 @@ export function createRendererController({
         if (!resp) return;
 
         if (isError) {
+            resp.innerHTML = '';
             resp.textContent = String(text ?? '');
         } else {
+            resp.textContent = '';
             const formatted = formatAIResponse(text);
             resp.innerHTML = formatted || '<p>No response generated.</p>';
         }
@@ -169,18 +182,26 @@ export function createRendererController({
 
     electronAPI.on('api-response', (text) => {
         setLoadingVisible(false);
-        setDebugStatus('renderer active | response received');
+        setDebugStatus('Response received');
         showAIResponse(text, false);
     });
 
     electronAPI.on('api-error', (text) => {
         setLoadingVisible(false);
-        setDebugStatus('renderer active | error received');
+        setDebugStatus('Error received');
         showAIResponse(text, true);
     });
 
     electronAPI.on('shortcut-registration-warning', (text) => {
         showAIResponse(text, true);
+    });
+
+    electronAPI.on('mode-changed', (mode) => {
+        setModeIndicator(mode);
+    });
+
+    electronAPI.on('debug-status', (text) => {
+        setDebugStatus(text);
     });
 
     electronAPI.on('clear-ai-response', clearAIResponse);
@@ -201,7 +222,8 @@ export function createRendererController({
         });
     }
 
-    setDebugStatus('renderer active | waiting for shortcuts');
+    setDebugStatus('Waiting for shortcuts');
+    setModeIndicator('code');
     updateScreenshotStack([]);
 
     return {
@@ -209,7 +231,8 @@ export function createRendererController({
         showAIResponse,
         clearAIResponse,
         updateScreenshotStack,
-        setDebugStatus
+        setDebugStatus,
+        setModeIndicator
     };
 }
 

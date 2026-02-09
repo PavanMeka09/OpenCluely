@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { processScreenshot } from './api.js';
+import { processScreenshot, resolvePromptMode } from './api.js';
 
 class HeadersMock {
   constructor(contentType = '') {
@@ -99,4 +99,11 @@ test('processScreenshot maps AbortError to timeout message', async () => {
   } finally {
     global.fetch = originalFetch;
   }
+});
+
+test('resolvePromptMode falls back to default for invalid mode', () => {
+  assert.equal(resolvePromptMode('mcq'), 'mcq');
+  assert.equal(resolvePromptMode('code'), 'code');
+  assert.equal(resolvePromptMode('unknown'), 'code');
+  assert.equal(resolvePromptMode(null), 'code');
 });

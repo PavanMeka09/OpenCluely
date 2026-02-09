@@ -7,7 +7,9 @@ const validReceiveChannels = new Set([
   'api-error',
   'clear-ai-response',
   'scroll-ai-response',
-  'shortcut-registration-warning'
+  'shortcut-registration-warning',
+  'mode-changed',
+  'debug-status'
 ]);
 
 contextBridge.exposeInMainWorld('electronAPI', {

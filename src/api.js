@@ -1,6 +1,7 @@
 import { CONFIG } from './config.js';
 
 const REQUEST_TIMEOUT_MS = 45_000;
+const VALID_PROMPT_MODES = new Set(CONFIG.PROMPT_MODES);
 
 async function safeParseBody(response) {
   const contentType = response.headers.get('content-type') || '';
@@ -20,7 +21,37 @@ async function safeParseBody(response) {
   }
 }
 
-export async function processScreenshot(imageDataOrArray, apiKey, language = CONFIG.DEFAULT_LANGUAGE) {
+export function resolvePromptMode(mode) {
+  if (typeof mode !== 'string') return CONFIG.DEFAULT_PROMPT_MODE;
+  const normalized = mode.trim().toLowerCase();
+  return VALID_PROMPT_MODES.has(normalized) ? normalized : CONFIG.DEFAULT_PROMPT_MODE;
+}
+
+function buildBasePrompt(language, mode) {
+  if (mode === 'mcq') {
+    return `You are a concise coding assistant for interview MCQs.
+Look at the screenshots and answer in ${language}.
+Response format:
+1) Final answer (option/choice)
+2) Short explanation (2-5 bullets)
+3) Elimination notes for other options.
+If the screenshot is ambiguous, say what is missing and provide the best probable answer.`;
+  }
+
+  return `You are a concise coding assistant for stealth interview help.
+First give your thoughts on the problem.
+Look at the screenshots and directly give the clean solution in ${language}.
+If code is needed, provide only the essential working code in markdown code blocks.
+Give solution with comments explaining the code.
+After giving the solution, give complexity (both time and space).`;
+}
+
+export async function processScreenshot(
+  imageDataOrArray,
+  apiKey,
+  language = CONFIG.DEFAULT_LANGUAGE,
+  options = {}
+) {
   if (!Array.isArray(imageDataOrArray) || imageDataOrArray.length === 0) {
     throw new Error('No screenshots to process.');
   }
@@ -29,13 +60,8 @@ export async function processScreenshot(imageDataOrArray, apiKey, language = CON
     throw new Error('Missing GEMINI_API_KEY. Add it to your .env file.');
   }
 
-  const prompt = `You are a concise coding assistant for stealth interview help.
-  first give your thoughts on the problem.
-  Look at the screenshots and directly give the clean solution in ${language}.
-  If code is needed, provide only the essential working code in markdown code blocks.
-  Give solution with comments explaing the code.
-  after giving the solution give complexity of the code. (both time and space)
-  `;
+  const mode = resolvePromptMode(options.mode);
+  const prompt = buildBasePrompt(language, mode);
 
   const contents = imageDataOrArray.map(img => ({
     inline_data: { mime_type: "image/png", data: img }

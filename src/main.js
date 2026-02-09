@@ -46,11 +46,19 @@ function createMainWindow() {
   });
   mainWindow.setAlwaysOnTop(true, 'screen-saver');
   mainWindow.setSkipTaskbar(true);
-  mainWindow.setVisibleOnAllWorkspaces(false);
+  mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   mainWindow.setContentProtection(true);
+  mainWindow.setFocusable(false);
   mainWindow.setIgnoreMouseEvents(true, { forward: true });
+  mainWindow.on('focus', () => {
+    // Stealth guard: never keep focus even if OS briefly assigns it.
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.blur();
+    }
+  });
 
   mainWindow.once('ready-to-show', () => {
+    mainWindow.setAlwaysOnTop(true, 'screen-saver');
     mainWindow.showInactive();
   });
 }

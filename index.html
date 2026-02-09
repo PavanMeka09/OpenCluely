@@ -26,6 +26,11 @@
                     <span class="shortcut-key">ctrl</span>
                     <span class="shortcut-key">g</span>
                 </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-label">Toggle Mode</span>
+                    <span class="shortcut-key">ctrl</span>
+                    <span class="shortcut-key">m</span>
+                </div>
             </div>
             <div id="debug-status" class="debug-status" aria-live="polite">Renderer booting...</div>
         </header>
@@ -50,6 +55,10 @@
             aria-live="polite"
             style="-webkit-app-region: no-drag;">
         </section>
+
+        <div class="mode-row" style="-webkit-app-region: no-drag;">
+            <span id="mode-indicator" class="mode-indicator">Mode: code</span>
+        </div>
     </div>
 </body>
 </html>
